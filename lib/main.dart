@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -146,8 +147,30 @@ class _GlowOrb extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  DateTime? _lastTap;
+
+  void _handleListeningTap(AssistantController controller) {
+    final now = DateTime.now();
+    if (_lastTap != null && now.difference(_lastTap!) < const Duration(milliseconds: 300)) {
+      // Double tap - stop listening
+      controller.stop();
+      _lastTap = null;
+    } else {
+      _lastTap = now;
+      // Single tap - start listening
+      if (!controller.snapshot.isRunning) {
+        controller.start();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -157,66 +180,38 @@ class HomeScreen extends StatelessWidget {
         final statusLabel = snapshot.statusLabel;
         final pendingLabel = snapshot.pendingModeLabel;
 
-        return RefreshIndicator(
-          onRefresh: controller.refresh,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-            children: [
-              Text(
-                'HeyyDarling 😘',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                    ),
-              ),
-              const SizedBox(height: 24),
-              _StatusPanel(
-                statusLabel: statusLabel,
-                pendingLabel: pendingLabel,
-                snapshot: snapshot,
-              ),
-              const SizedBox(height: 20),
-              _MicPulseIndicator(isListening: snapshot.isRunning),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: controller.isBusy || snapshot.isRunning
-                          ? null
-                          : controller.start,
-                      icon: const Icon(Icons.play_arrow_rounded),
-                      label: const Text('Start Listening'),
-                    ),
+        return ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          children: [
+            Text(
+              'HeyyDarling 😘',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: controller.isBusy || !snapshot.isRunning
-                          ? null
-                          : controller.stop,
-                      icon: const Icon(Icons.stop_circle_outlined),
-                      label: const Text('Stop'),
-                    ),
-                  ),
-                ],
+            ),
+            const SizedBox(height: 24),
+            _StatusPanel(
+              statusLabel: statusLabel,
+              pendingLabel: pendingLabel,
+              snapshot: snapshot,
+              onTap: () => _handleListeningTap(controller),
+            ),
+            const SizedBox(height: 24),
+            _MicPulseIndicatorV2(
+              isListening: snapshot.isRunning,
+              isBusy: controller.isBusy,
+              onTap: () => _handleListeningTap(controller),
+            ),
+            if (controller.permissionMessage != null) ...[
+              const SizedBox(height: 14),
+              _MessageCard(
+                text: controller.permissionMessage!,
+                color: Theme.of(context).colorScheme.error,
               ),
-              const SizedBox(height: 12),
-              FilledButton.tonalIcon(
-                onPressed: controller.refresh,
-                icon: const Icon(Icons.sync),
-                label: const Text('Refresh Status'),
-              ),
-              if (controller.permissionMessage != null) ...[
-                const SizedBox(height: 14),
-                _MessageCard(
-                  text: controller.permissionMessage!,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-              ],
             ],
-          ),
+          ],
         );
       },
     );
@@ -251,7 +246,7 @@ class LogsScreen extends StatelessWidget {
             const SizedBox(height: 8),
             if (logs.isEmpty)
               const _MessageCard(
-                text: 'No events yet. Start listening to stream recognition and call events.',
+                text: 'No events yet. Tap the listening icon to start.',
                 color: Color(0xFFE91E63),
               )
             else
@@ -279,100 +274,301 @@ class _StatusPanel extends StatelessWidget {
     required this.statusLabel,
     required this.pendingLabel,
     required this.snapshot,
+    required this.onTap,
   });
 
   final String statusLabel;
   final String pendingLabel;
   final ServiceSnapshot snapshot;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.white, const Color(0xFFFFF1F7)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0x11E91E63),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-        border: Border.all(color: const Color(0x22E91E63)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // Large Assistant Image
-            Container(
-              height: 240,
-              width: 180,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0x33E91E63),
-                    blurRadius: 30,
-                    spreadRadius: 5,
-                  )
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withValues(alpha: 0.25),
+                  const Color(0xFFFFF1F7).withValues(alpha: 0.15),
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: _AssistantImagePlaceholder(),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 1.5,
               ),
-            ),
-            const SizedBox(height: 24),
-            // Status Info
-            Row(
-              children: [
-                Icon(Icons.monitor_heart_outlined, color: snapshot.statusColor, size: 28),
-                const SizedBox(width: 12),
-                Text('Service Status', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFE91E63).withValues(alpha: 0.15),
+                  blurRadius: 25,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  blurRadius: 15,
+                  spreadRadius: -5,
+                  offset: const Offset(0, -2),
+                ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              statusLabel,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: snapshot.statusColor,
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                _StatPill(label: 'Running', value: snapshot.isRunning ? 'Yes' : 'No', icon: Icons.play_circle_fill),
-                const SizedBox(width: 12),
-                _StatPill(label: 'Pending', value: pendingLabel, icon: Icons.pending_actions),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0x11E91E63)),
-              ),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Last Command', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.grey.shade600)),
-                  Text(snapshot.lastCommand ?? 'None', style: const TextStyle(fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 8),
-                  Text('Last Transcript', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.grey.shade600)),
-                  Text(snapshot.lastTranscript ?? 'None', style: const TextStyle(fontWeight: FontWeight.w500)),
+                  // Larger Assistant Avatar
+                  Container(
+                    height: 280,
+                    width: 220,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE91E63).withValues(alpha: 0.4),
+                          blurRadius: 40,
+                          spreadRadius: 8,
+                        )
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: _AssistantImagePlaceholder(),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Status Header with Listening Icon
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        snapshot.isRunning ? Icons.graphic_eq_rounded : Icons.mic_none_rounded,
+                        color: snapshot.statusColor,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Service Status',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Animated Listening Text
+                  if (snapshot.isRunning)
+                    _AnimatedListeningText(
+                      text: statusLabel,
+                      color: snapshot.statusColor,
+                    )
+                  else
+                    Text(
+                      statusLabel,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            color: snapshot.statusColor,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _GlassmorphicStatPill(
+                          label: 'Running',
+                          value: snapshot.isRunning ? 'Yes' : 'No',
+                          icon: Icons.play_circle_fill,
+                          isActive: snapshot.isRunning,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _GlassmorphicStatPill(
+                          label: 'Pending',
+                          value: pendingLabel,
+                          icon: Icons.pending_actions,
+                          isActive: pendingLabel != 'None',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Last Command',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelMedium
+                              ?.copyWith(
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          snapshot.lastCommand ?? 'None',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Last Transcript',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelMedium
+                              ?.copyWith(
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          snapshot.lastTranscript ?? 'None',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedListeningText extends StatefulWidget {
+  const _AnimatedListeningText({required this.text, required this.color});
+
+  final String text;
+  final Color color;
+
+  @override
+  State<_AnimatedListeningText> createState() => _AnimatedListeningTextState();
+}
+
+class _AnimatedListeningTextState extends State<_AnimatedListeningText> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        int dotCount = (_controller.value * 3).floor() + 1;
+        final dots = '.' * dotCount + List.filled(3 - dotCount, '').join();
+
+        return Text(
+          '${widget.text}$dots',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: widget.color,
+                fontWeight: FontWeight.w800,
+              ),
+        );
+      },
+    );
+  }
+}
+
+class _GlassmorphicStatPill extends StatelessWidget {
+  const _GlassmorphicStatPill({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.isActive,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive
+                ? const Color(0xFFE91E63).withValues(alpha: 0.1)
+                : Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isActive
+                  ? const Color(0xFFE91E63).withValues(alpha: 0.3)
+                  : Colors.white.withValues(alpha: 0.2),
+              width: 1.2,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isActive ? const Color(0xFFE91E63) : Colors.grey.shade400,
+                size: 20,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: isActive ? const Color(0xFFE91E63) : Colors.grey.shade700,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -455,43 +651,6 @@ class _AssistantImagePlaceholderState extends State<_AssistantImagePlaceholder> 
             ),
         ),
       ],
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _StatPill({required this.label, required this.value, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0x11E91E63)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: const Color(0xFFE91E63)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -596,6 +755,162 @@ class _MicPulseIndicatorState extends State<_MicPulseIndicator> with SingleTicke
           ),
         );
       },
+    );
+  }
+}
+
+class _MicPulseIndicatorV2 extends StatefulWidget {
+  const _MicPulseIndicatorV2({
+    required this.isListening,
+    required this.isBusy,
+    required this.onTap,
+  });
+
+  final bool isListening;
+  final bool isBusy;
+  final VoidCallback onTap;
+
+  @override
+  State<_MicPulseIndicatorV2> createState() => _MicPulseIndicatorV2State();
+}
+
+class _MicPulseIndicatorV2State extends State<_MicPulseIndicatorV2>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1700),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.isBusy ? null : widget.onTap,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final t = widget.isListening ? _controller.value : 0.0;
+
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(40),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(40),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.2),
+                      const Color(0xFFFFF1F7).withValues(alpha: 0.1),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFE91E63).withValues(
+                          alpha: widget.isListening ? 0.25 : 0.08),
+                      blurRadius: 30,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 12),
+                    )
+                  ],
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Center(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (widget.isListening)
+                        ...List.generate(3, (index) {
+                          final delay = index * 0.33;
+                          var phase = (t + delay) % 1.0;
+                          phase = Curves.easeOutQuad.transform(phase);
+
+                          return Container(
+                            width: 96 + (phase * 140),
+                            height: 96 + (phase * 140),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFE91E63).withValues(
+                                    alpha: (1.0 - phase) * 0.5),
+                                width: 2.5,
+                              ),
+                            ),
+                          );
+                        }),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: widget.isListening ? 110 : 100,
+                        height: widget.isListening ? 110 : 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: widget.isListening
+                              ? const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFFE91E63),
+                                    Color(0xFFFF80AB),
+                                  ],
+                                )
+                              : LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.white,
+                                    Color(0xFFFFF1F7),
+                                  ],
+                                ),
+                          boxShadow: widget.isListening
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFFE91E63)
+                                        .withValues(alpha: 0.5),
+                                    blurRadius: 35,
+                                    spreadRadius: 8,
+                                  )
+                                ]
+                              : [
+                                  BoxShadow(
+                                    color: const Color(0xFFE91E63)
+                                        .withValues(alpha: 0.15),
+                                    blurRadius: 20,
+                                  )
+                                ],
+                          border: Border.all(
+                            color: widget.isListening
+                                ? Colors.transparent
+                                : const Color(0x66E91E63),
+                            width: 2,
+                          ),
+                        ),
+                        child: Icon(
+                          widget.isListening
+                              ? Icons.graphic_eq_rounded
+                              : Icons.mic_rounded,
+                          size: widget.isListening ? 54 : 48,
+                          color: widget.isListening ? Colors.white : const Color(0xFFE91E63),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -750,6 +1065,8 @@ class AssistantController extends ChangeNotifier {
 
   bool get _isAndroidPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
+  Timer? _autoRefreshTimer;
+
   void initialize() {
     _subscription = _bridge.statusStream.listen(
       (value) {
@@ -764,6 +1081,10 @@ class AssistantController extends ChangeNotifier {
       },
     );
     unawaited(refresh());
+    // Auto-refresh every 2 minutes
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 2), (_) {
+      unawaited(refresh());
+    });
   }
 
   Future<void> refresh() async {
@@ -871,6 +1192,7 @@ class AssistantController extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    _autoRefreshTimer?.cancel();
     super.dispose();
   }
 }
