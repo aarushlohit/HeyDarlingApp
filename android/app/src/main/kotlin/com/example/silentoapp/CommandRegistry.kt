@@ -41,7 +41,7 @@ class CommandRegistry private constructor(
     }
 
     companion object {
-        private val hotwords = listOf("hey darling", "ok darling", "okay darling")
+        private val hotwords = listOf("heyy darling", "ok darling", "okay darling")
 
         private val defaultCommands =
             listOf(

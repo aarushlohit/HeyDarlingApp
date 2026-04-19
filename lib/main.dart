@@ -11,14 +11,14 @@ import 'package:provider/provider.dart';
 void main() {
   runApp(
     ChangeNotifierProvider(
-      create: (_) => AssistantController(SilentAssistantBridge())..initialize(),
-      child: const SilentAssistantApp(),
+      create: (_) => AssistantController(HeyDarlingBridge())..initialize(),
+      child: const HeyDarlingApp(),
     ),
   );
 }
 
-class SilentAssistantApp extends StatelessWidget {
-  const SilentAssistantApp({super.key});
+class HeyDarlingApp extends StatelessWidget {
+  const HeyDarlingApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,7 @@ class SilentAssistantApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Darling 😘 Assistant App',
+      title: 'HeyyDarling 😘',
       theme: ThemeData(
         brightness: Brightness.light,
         scaffoldBackgroundColor: const Color(0xFFFFF7FB),
@@ -164,18 +164,11 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
               Text(
-                'Darling 😘 Assistant App',
+                'HeyyDarling 😘',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Offline call guard with a white and pink vibe',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: const Color(0xFF7B3A59),
-                ),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                    ),
               ),
               const SizedBox(height: 24),
               _StatusPanel(
@@ -314,8 +307,28 @@ class _StatusPanel extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Large Assistant Image
+            Container(
+              height: 240,
+              width: 180,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0x33E91E63),
+                    blurRadius: 30,
+                    spreadRadius: 5,
+                  )
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: _AssistantImagePlaceholder(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Status Info
             Row(
               children: [
                 Icon(Icons.monitor_heart_outlined, color: snapshot.statusColor, size: 28),
@@ -366,6 +379,93 @@ class _StatusPanel extends StatelessWidget {
   }
 }
 
+class _AssistantImagePlaceholder extends StatefulWidget {
+  @override
+  State<_AssistantImagePlaceholder> createState() => _AssistantImagePlaceholderState();
+}
+
+class _AssistantImagePlaceholderState extends State<_AssistantImagePlaceholder> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(duration: const Duration(seconds: 2), vsync: this)..repeat(reverse: true);
+    _fadeAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [const Color(0xFFFFE4F1), const Color(0xFFFFF1F7)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Center(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  'assets/images/assistant.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.pink.shade100, Colors.pink.shade50],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.person_4, size: 80, color: Colors.pink.shade300),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Your Assistant',
+                            style: TextStyle(
+                              color: Colors.pink.shade400,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Save image to assets/images/assistant.png',
+                            style: TextStyle(
+                              color: Colors.pink.shade300,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _StatPill extends StatelessWidget {
   final String label;
   final String value;
@@ -412,8 +512,7 @@ class _MicPulseIndicator extends StatefulWidget {
   State<_MicPulseIndicator> createState() => _MicPulseIndicatorState();
 }
 
-class _MicPulseIndicatorState extends State<_MicPulseIndicator>
-    with SingleTickerProviderStateMixin {
+class _MicPulseIndicatorState extends State<_MicPulseIndicator> with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1700),
@@ -431,8 +530,7 @@ class _MicPulseIndicatorState extends State<_MicPulseIndicator>
       animation: _controller,
       builder: (context, _) {
         final t = widget.isListening ? _controller.value : 0.0;
-        
-        // Use multi-ring ripple effect for modern high-impact animation
+
         return Container(
           height: 180,
           decoration: BoxDecoration(
@@ -460,7 +558,7 @@ class _MicPulseIndicatorState extends State<_MicPulseIndicator>
                     final delay = index * 0.33;
                     var phase = (t + delay) % 1.0;
                     phase = Curves.easeOutQuad.transform(phase);
-                    
+
                     return Container(
                       width: 86 + (phase * 120),
                       height: 86 + (phase * 120),
@@ -473,7 +571,6 @@ class _MicPulseIndicatorState extends State<_MicPulseIndicator>
                       ),
                     );
                   }),
-                
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   width: widget.isListening ? 96 : 86,
@@ -482,16 +579,16 @@ class _MicPulseIndicatorState extends State<_MicPulseIndicator>
                     shape: BoxShape.circle,
                     color: widget.isListening ? const Color(0xFFE91E63) : Colors.white,
                     boxShadow: widget.isListening
-                      ? [
-                          BoxShadow(
-                            color: const Color(0x66E91E63),
-                            blurRadius: 30,
-                            spreadRadius: 5,
-                          )
-                        ]
-                      : null,
+                        ? [
+                            BoxShadow(
+                              color: const Color(0x66E91E63),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                            )
+                          ]
+                        : null,
                     border: Border.all(
-                      color: widget.isListening ? Colors.transparent : const Color(0x55E91E63), 
+                      color: widget.isListening ? Colors.transparent : const Color(0x55E91E63),
                       width: 1.4,
                     ),
                   ),
@@ -530,31 +627,146 @@ class _MessageCard extends StatelessWidget {
   }
 }
 
+// Splash/Loading Screen
+class _LoadingScreen extends StatefulWidget {
+  const _LoadingScreen();
+
+  @override
+  State<_LoadingScreen> createState() => _LoadingScreenState();
+}
+
+class _LoadingScreenState extends State<_LoadingScreen> with TickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late AnimationController _rotateController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotateAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(duration: const Duration(seconds: 2), vsync: this)..repeat(reverse: true);
+    _rotateController = AnimationController(duration: const Duration(seconds: 3), vsync: this)..repeat();
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.1).animate(_scaleController);
+    _rotateAnimation = Tween<double>(begin: 0, end: 2 * math.pi).animate(_rotateController);
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    _rotateController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFFF7FB), Color(0xFFFFEFF7), Color(0xFFFFE4F1)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ScaleTransition(
+                scale: _scaleAnimation,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x44E91E63),
+                        blurRadius: 30,
+                        spreadRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: RotationTransition(
+                    turns: _rotateAnimation,
+                    child: const Icon(
+                      Icons.favorite,
+                      size: 60,
+                      color: Color(0xFFE91E63),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              Text(
+                'HeyyDarling',
+                style: GoogleFonts.outfit(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFFE91E63),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '😘',
+                style: const TextStyle(fontSize: 48),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: 60,
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE91E63)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Waking up your companion...',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AssistantController extends ChangeNotifier {
   AssistantController(this._bridge);
 
-  final SilentAssistantBridge _bridge;
+  final HeyDarlingBridge _bridge;
 
   StreamSubscription<ServiceSnapshot>? _subscription;
   ServiceSnapshot _snapshot = ServiceSnapshot.initial();
   bool _isBusy = false;
   String? _permissionMessage;
+  bool _isInitialized = false;
 
   ServiceSnapshot get snapshot => _snapshot;
   bool get isBusy => _isBusy;
   String? get permissionMessage => _permissionMessage;
+  bool get isInitialized => _isInitialized;
 
-  bool get _isAndroidPlatform =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  bool get _isAndroidPlatform => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   void initialize() {
     _subscription = _bridge.statusStream.listen(
       (value) {
         _snapshot = value;
+        _isInitialized = true;
         notifyListeners();
       },
       onError: (error) {
         _permissionMessage = error.toString();
+        _isInitialized = true;
         notifyListeners();
       },
     );
@@ -565,12 +777,14 @@ class AssistantController extends ChangeNotifier {
     if (!_isAndroidPlatform) {
       _snapshot = ServiceSnapshot.initial();
       _permissionMessage = 'This app currently supports Android devices only.';
+      _isInitialized = true;
       notifyListeners();
       return;
     }
 
     final next = await _bridge.getSnapshot();
     _snapshot = next;
+    _isInitialized = true;
     notifyListeners();
   }
 
@@ -668,52 +882,40 @@ class AssistantController extends ChangeNotifier {
   }
 }
 
-class SilentAssistantBridge {
-  static const MethodChannel _methodChannel =
-      MethodChannel('com.example.silentoapp/service');
-  static const EventChannel _eventChannel =
-      EventChannel('com.example.silentoapp/service_status');
+class HeyDarlingBridge {
+  static const MethodChannel _methodChannel = MethodChannel('com.example.silentoapp/service');
+  static const EventChannel _eventChannel = EventChannel('com.example.silentoapp/service_status');
 
-  Stream<ServiceSnapshot> get statusStream => _eventChannel
-      .receiveBroadcastStream()
-      .map((event) => ServiceSnapshot.fromMap(Map<String, dynamic>.from(event)));
+  Stream<ServiceSnapshot> get statusStream => _eventChannel.receiveBroadcastStream().map((event) => ServiceSnapshot.fromMap(Map<String, dynamic>.from(event)));
 
   Future<void> startService() => _methodChannel.invokeMethod('startService');
-
   Future<void> stopService() => _methodChannel.invokeMethod('stopService');
 
   Future<ServiceSnapshot> getSnapshot() async {
-    final result =
-        await _methodChannel.invokeMapMethod<String, dynamic>('getServiceSnapshot');
+    final result = await _methodChannel.invokeMapMethod<String, dynamic>('getServiceSnapshot');
     return ServiceSnapshot.fromMap(result ?? const <String, dynamic>{});
   }
 
   Future<bool> hasNotificationPolicyAccess() async {
-    final result =
-        await _methodChannel.invokeMethod<bool>('hasNotificationPolicyAccess');
+    final result = await _methodChannel.invokeMethod<bool>('hasNotificationPolicyAccess');
     return result ?? false;
   }
 
-  Future<void> requestNotificationPolicyAccess() =>
-      _methodChannel.invokeMethod('requestNotificationPolicyAccess');
+  Future<void> requestNotificationPolicyAccess() => _methodChannel.invokeMethod('requestNotificationPolicyAccess');
 
   Future<bool> hasNotificationListenerAccess() async {
-    final result =
-        await _methodChannel.invokeMethod<bool>('hasNotificationListenerAccess');
+    final result = await _methodChannel.invokeMethod<bool>('hasNotificationListenerAccess');
     return result ?? false;
   }
 
-  Future<void> requestNotificationListenerAccess() =>
-      _methodChannel.invokeMethod('requestNotificationListenerAccess');
+  Future<void> requestNotificationListenerAccess() => _methodChannel.invokeMethod('requestNotificationListenerAccess');
 
   Future<bool> isIgnoringBatteryOptimizations() async {
-    final result =
-        await _methodChannel.invokeMethod<bool>('isIgnoringBatteryOptimizations');
+    final result = await _methodChannel.invokeMethod<bool>('isIgnoringBatteryOptimizations');
     return result ?? false;
   }
 
-  Future<void> requestIgnoreBatteryOptimizations() =>
-      _methodChannel.invokeMethod('requestIgnoreBatteryOptimizations');
+  Future<void> requestIgnoreBatteryOptimizations() => _methodChannel.invokeMethod('requestIgnoreBatteryOptimizations');
 }
 
 class ServiceSnapshot {
@@ -742,11 +944,10 @@ class ServiceSnapshot {
       pendingMode: map['pendingMode'] as String? ?? 'none',
       lastCommand: map['lastCommand'] as String?,
       lastTranscript: map['lastTranscript'] as String?,
-      logs: (map['logs'] as List<dynamic>? ?? const <dynamic>[])
-          .map((item) => item.toString())
-          .toList(growable: false),
+      logs: (map['logs'] as List<dynamic>? ?? const <dynamic>[]).map((item) => item.toString()).toList(growable: false),
     );
   }
+
 
   final String status;
   final bool isRunning;
@@ -771,10 +972,10 @@ class ServiceSnapshot {
       };
 
   Color get statusColor => switch (status) {
-      'listening' => const Color(0xFFE91E63),
-      'silent_triggered' => const Color(0xFFC2185B),
-      'vibrate_triggered' => const Color(0xFFAD1457),
-      'error' => const Color(0xFFD81B60),
-      _ => const Color(0xFFEC407A),
+        'listening' => const Color(0xFFE91E63),
+        'silent_triggered' => const Color(0xFFC2185B),
+        'vibrate_triggered' => const Color(0xFFAD1457),
+        'error' => const Color(0xFFD81B60),
+        _ => const Color(0xFFEC407A),
       };
 }
