@@ -13,14 +13,24 @@ import 'package:silentoapp/main.dart';
 void main() {
   testWidgets('App initializes with HeyyDarling branding', (WidgetTester tester) async {
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => AssistantController(HeyDarlingBridge()),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => ThemeProvider(),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => AssistantController(HeyDarlingBridge())..initialize(),
+          ),
+        ],
         child: const HeyDarlingApp(),
       ),
     );
 
-    // Allow one frame for rendering
-    await tester.pump();
+    // Pump for splash screen animation (2s)
+    await tester.pump(const Duration(milliseconds: 2000));
+    
+    // Pump for the delayed navigation (3s)
+    await tester.pump(const Duration(seconds: 3));
 
     // Test passes if app builds without errors
     expect(find.byType(HeyDarlingApp), findsOneWidget);

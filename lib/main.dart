@@ -9,10 +9,23 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Lock to portrait mode only
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AssistantController(HeyDarlingBridge())..initialize(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AssistantController(HeyDarlingBridge())..initialize(),
+        ),
+      ],
       child: const HeyDarlingApp(),
     ),
   );
@@ -25,12 +38,21 @@ class HeyDarlingApp extends StatelessWidget {
   Widget build(BuildContext context) {
     const accent = Color(0xFFE91E63);
     const accent2 = Color(0xFFFF80AB);
-
     final baseText = GoogleFonts.outfitTextTheme();
+    final isDark = context.watch<ThemeProvider>().isDarkMode;
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'HeyyDarling 😘',
+      navigatorKey: GlobalKey<NavigatorState>(),
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/home':
+            return MaterialPageRoute(builder: (_) => const _ShellPage());
+          default:
+            return MaterialPageRoute(builder: (_) => const _SplashScreen());
+        }
+      },
       theme: ThemeData(
         brightness: Brightness.light,
         scaffoldBackgroundColor: const Color(0xFFFFF7FB),
@@ -49,8 +71,149 @@ class HeyDarlingApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const _ShellPage(),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
+        textTheme: baseText.apply(bodyColor: Colors.white, displayColor: Colors.white),
+        colorScheme: const ColorScheme.dark(
+          primary: accent,
+          secondary: accent2,
+          surface: Color(0xFF2A2A2A),
+          error: Color(0xFFD81B60),
+        ),
+        cardTheme: CardThemeData(
+          color: const Color(0xFF2A2A2A),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 0,
+          margin: EdgeInsets.zero,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+      home: const _SplashScreen(),
     );
+  }
+}
+
+class _SplashScreen extends StatefulWidget {
+  const _SplashScreen();
+
+  @override
+  State<_SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<_SplashScreen> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..forward();
+
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: context.watch<ThemeProvider>().isDarkMode
+                ? [const Color(0xFF1A1A1A), const Color(0xFF2A2A2A)]
+                : [const Color(0xFFFFF7FB), const Color(0xFFFFE4F1)],
+          ),
+        ),
+        child: Center(
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFE91E63), Color(0xFFFF80AB)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE91E63).withValues(alpha: 0.5),
+                          blurRadius: 40,
+                          spreadRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.graphic_eq_rounded,
+                      size: 60,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'HeyyDarling 😘',
+                    style: GoogleFonts.outfit(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFE91E63),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your Smart Assistant',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ThemeProvider extends ChangeNotifier {
+  bool _isDarkMode = false;
+
+  bool get isDarkMode => _isDarkMode;
+
+  void toggleTheme() {
+    _isDarkMode = !_isDarkMode;
+    notifyListeners();
   }
 }
 
@@ -68,7 +231,7 @@ class _ShellPageState extends State<_ShellPage> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       const HomeScreen(),
-      const LogsScreen(),
+      const SettingsScreen(),
     ];
 
     return Scaffold(
@@ -78,15 +241,27 @@ class _ShellPageState extends State<_ShellPage> {
           SafeArea(child: pages[_index]),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0x33E91E63),
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.graphic_eq), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.timeline), label: 'Logs'),
-        ],
+      extendBody: true,
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: NavigationBar(
+              selectedIndex: _index,
+              backgroundColor: context.watch<ThemeProvider>().isDarkMode
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.25),
+              indicatorColor: const Color(0x33E91E63),
+              onDestinationSelected: (value) => setState(() => _index = value),
+              destinations: const [
+                NavigationDestination(icon: Icon(Icons.graphic_eq), label: 'Home'),
+                NavigationDestination(icon: Icon(Icons.settings_rounded), label: 'Settings'),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -156,6 +331,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   DateTime? _lastTap;
+  int _heyDarlingTapCount = 0;
 
   void _handleListeningTap(AssistantController controller) {
     final now = DateTime.now();
@@ -172,6 +348,81 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _handleHeyDarlingTap() {
+    _heyDarlingTapCount++;
+    if (_heyDarlingTapCount == 10) {
+      _heyDarlingTapCount = 0;
+      _showEasterEggPopup(
+        context,
+        '😘 Easter Egg Found! 😘',
+        'Omg you got me babe!! aww',
+      );
+    }
+  }
+
+  void _showEasterEggPopup(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => Center(
+        child: ScaleTransition(
+          scale: AlwaysStoppedAnimation(1.0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withValues(alpha: 0.25),
+                        const Color(0xFFFFF1F7).withValues(alpha: 0.15),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.outfit(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFE91E63),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Aww! 💕'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AssistantController>(
@@ -182,26 +433,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
           children: [
-            Text(
-              'HeyyDarling 😘',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
+            GestureDetector(
+              onTap: _handleHeyDarlingTap,
+              child: Text(
+                'HeyyDarling 😘',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                    ),
+              ),
             ),
             const SizedBox(height: 24),
             _StatusPanel(
               statusLabel: statusLabel,
               pendingLabel: pendingLabel,
               snapshot: snapshot,
-              onTap: () => _handleListeningTap(controller),
-            ),
-            const SizedBox(height: 24),
-            _MicPulseIndicatorV2(
-              isListening: snapshot.isRunning,
-              isBusy: controller.isBusy,
               onTap: () => _handleListeningTap(controller),
             ),
             if (controller.permissionMessage != null) ...[
@@ -218,53 +466,290 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class LogsScreen extends StatelessWidget {
-  const LogsScreen({super.key});
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  int _settingsTapCount = 0;
+
+  void _handleVersionTap() {
+    _settingsTapCount++;
+    if (_settingsTapCount == 3) {
+      _settingsTapCount = 0;
+      _showEasterEggPopup(
+        context,
+        '😘 Easter Egg Found! 😘',
+        'Aww your so sweet babe you found easter egg 😘',
+      );
+    }
+  }
+
+  void _showEasterEggPopup(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.25),
+                      const Color(0xFFFFF1F7).withValues(alpha: 0.15),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFE91E63),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Love it! 💕'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AssistantController>(
-      builder: (context, controller, _) {
-        final logs = controller.snapshot.logs;
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Live Logs',
-                  style: Theme.of(context).textTheme.headlineSmall,
+    final themeProvider = context.watch<ThemeProvider>();
+
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+      children: [
+        Text(
+          'Settings',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+              ),
+        ),
+        const SizedBox(height: 24),
+        // Theme Toggle
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.25),
+                    const Color(0xFFFFF1F7).withValues(alpha: 0.15),
+                  ],
                 ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: controller.refresh,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Sync'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (logs.isEmpty)
-              const _MessageCard(
-                text: 'No events yet. Tap the listening icon to start.',
-                color: Color(0xFFE91E63),
-              )
-            else
-              ...logs.map(
-                (line) => Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0x33E91E63)),
-                  ),
-                  child: Text(line),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 1.5,
                 ),
               ),
-          ],
-        );
-      },
+              child: Row(
+                children: [
+                  Icon(
+                    themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                    color: const Color(0xFFE91E63),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Dark Mode',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Switch(
+                    value: themeProvider.isDarkMode,
+                    onChanged: (_) => themeProvider.toggleTheme(),
+                    activeThumbColor: const Color(0xFFE91E63),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // About
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.25),
+                    const Color(0xFFFFF1F7).withValues(alpha: 0.15),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.info_outlined, color: Color(0xFFE91E63)),
+                title: const Text('About HeyyDarling'),
+                subtitle: const Text('Smart voice assistant'),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(28),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Dialog(
+                            backgroundColor: Colors.transparent,
+                            child: Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.25),
+                                    const Color(0xFFFFF1F7).withValues(alpha: 0.15),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(28),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'About HeyyDarling',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFFE91E63),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Your smart voice assistant that intelligently handles calls and transcribes speech in real-time.',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  FilledButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: const Text('Got it! 💕'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Version
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.25),
+                    const Color(0xFFFFF1F7).withValues(alpha: 0.15),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.info_outlined, color: Color(0xFFE91E63)),
+                title: const Text('Version'),
+                subtitle: const Text('1.0.0 (Build 1)'),
+                onTap: _handleVersionTap,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Exit App
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.red.withValues(alpha: 0.15),
+                    Colors.red.withValues(alpha: 0.08),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.red.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.exit_to_app, color: Colors.red),
+                title: const Text('Exit App'),
+                onTap: () => SystemNavigator.pop(),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -344,15 +829,18 @@ class _StatusPanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  // Status Header with Listening Icon
+                  // Status Header with Listening Icon & Pulse
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        snapshot.isRunning ? Icons.graphic_eq_rounded : Icons.mic_none_rounded,
-                        color: snapshot.statusColor,
-                        size: 32,
-                      ),
+                      if (snapshot.isRunning)
+                        _ListeningPulseIndicator(statusColor: snapshot.statusColor)
+                      else
+                        Icon(
+                          Icons.mic_none_rounded,
+                          color: snapshot.statusColor,
+                          size: 32,
+                        ),
                       const SizedBox(width: 12),
                       Text(
                         'Service Status',
@@ -461,6 +949,64 @@ class _StatusPanel extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ListeningPulseIndicator extends StatefulWidget {
+  const _ListeningPulseIndicator({required this.statusColor});
+
+  final Color statusColor;
+
+  @override
+  State<_ListeningPulseIndicator> createState() => _ListeningPulseIndicatorState();
+}
+
+class _ListeningPulseIndicatorState extends State<_ListeningPulseIndicator> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            ...List.generate(2, (index) {
+              final delay = index * 0.5;
+              var phase = (_controller.value + delay) % 1.0;
+              phase = Curves.easeOutQuad.transform(phase);
+
+              return Container(
+                width: 32 + (phase * 20),
+                height: 32 + (phase * 20),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: widget.statusColor.withValues(alpha: (1.0 - phase) * 0.4),
+                    width: 1.5,
+                  ),
+                ),
+              );
+            }),
+            Icon(
+              Icons.graphic_eq_rounded,
+              color: widget.statusColor,
+              size: 32,
+            ),
+          ],
+        );
+      },
     );
   }
 }
