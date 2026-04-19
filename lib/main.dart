@@ -406,22 +406,16 @@ class _AssistantImagePlaceholderState extends State<_AssistantImagePlaceholder> 
     return Stack(
       alignment: Alignment.center,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [const Color(0xFFFFE4F1), const Color(0xFFFFF1F7)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Center(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  'assets/images/assistant.png',
-                  fit: BoxFit.cover,
+        FadeTransition(
+          opacity: _fadeAnimation,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: SizedBox(
+              width: 220,
+              height: 220,
+              child: Image.asset(
+                'assets/images/assistant.png',
+                fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       decoration: BoxDecoration(
@@ -459,7 +453,6 @@ class _AssistantImagePlaceholderState extends State<_AssistantImagePlaceholder> 
                 ),
               ),
             ),
-          ),
         ),
       ],
     );
