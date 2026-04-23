@@ -1,4 +1,4 @@
-# Darling Assistant App
+# Virtual  Assistant App
 
 Darling Assistant App is a Flutter + Android Kotlin MVP that keeps an offline voice listener alive in a foreground service and automatically silences or vibrates incoming calls when a spoken command is recognized.
 
